@@ -1,0 +1,3 @@
+Changes:
+1. splitnodes modified to output either clustered channels with global reference or local reference.
+2. mod_trials modified to 'not' save all workspace in trial mat file.

@@ -58,10 +58,10 @@ for subject = p.subjects
             trial.RawData = rmfield(trial.RawData,'EegDataCluster8');
         end
         
-        if(isfield(trial.RawData,'EegDataOrig'))
-            trial.RawData.EegData = trial.RawData.EegDataOrig;
-            trial.RawData = rmfield(trial.RawData,'EegDataOrig');
-        end
+%         if(isfield(trial.RawData,'EegDataOrig'))
+%             trial.RawData.EegData = trial.RawData.EegDataOrig;
+%             trial.RawData = rmfield(trial.RawData,'EegDataOrig');
+%         end
         save(fullfile(new_path,subject{1},file_name),'trial');
         fprintf('\nTrial %d of subject - %s done!',trial_num,subject{1});
     end
