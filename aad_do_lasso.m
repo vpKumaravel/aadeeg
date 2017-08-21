@@ -53,6 +53,7 @@ function aad_do_lasso(params)
                 decoder.ignoredchannels = find(0==mean(reshape(output,noflags,nofchannels),1)); %which channels were set to zero
                 selected_channels = find(0~=mean(reshape(output,noflags,nofchannels),1)); %which channels were set to zero
                 chnl_lst = params.chnl_lst;
+                rem_chnl_cnt = 1;
                 while(length(selected_channels)~=params.lassochnum)
                     if(length(selected_channels)>params.lassochnum)
                         lamb_gr_2 = lambda;
@@ -70,6 +71,7 @@ function aad_do_lasso(params)
                     
                     [output,~] = group_lasso(Rxx, Rxy, lambda, p, 1.0, 1.0); % AMN
                     selected_channels = find(0~=mean(reshape(output,noflags,nofchannels),1)); %which channels were set to zero
+                    
                     if(length(selected_channels)==params.lassochnum)
                         ch_selected = chnl_lst(selected_channels,:);
                         [~, uniq_chnls] = unique(ch_selected);
@@ -85,6 +87,9 @@ function aad_do_lasso(params)
                                     Rxx(strt:stp,:) = [];
                                     Rxx(:,strt:stp) = [];
                                     Rxy(strt:stp) = [];
+                                    
+                                    fprintf('\nRemoved channel = %d. Number of channels removed = %d', selected_channels(selected_channels == row_ids), rem_chnl_cnt);
+                                    
                                     selected_channels(selected_channels == row_ids) = [];
                                     chnl_lst(row_ids,:) = [];
                                     lambda = params.lassofactor;
@@ -92,6 +97,8 @@ function aad_do_lasso(params)
                                     lamb_ls_2 = 0;
                                     nofchannels = size(chnl_lst,1);
                                     p = length(Rxy)/nofchannels *ones(nofchannels,1); %each of the channels represents a group with length equal to number of delays
+                                    
+                                    rem_chnl_cnt = rem_chnl_cnt + 1;                            
                                 end
 %                             end
                         end
