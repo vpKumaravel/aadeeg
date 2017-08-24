@@ -47,18 +47,21 @@ function aad_do_lasso(params)
                 noflags = length(Rxy)/length(params.channels);
                 
                 p = length(Rxy)/length(params.channels) *ones(length(params.channels),1); %each of the channels represents a group with length equal to number of delays
-                
-                [output,~] = group_lasso(Rxx, Rxy, lambda, p, 1.0, 1.0); % AMN
-                
-                decoder.ignoredchannels = find(0==mean(reshape(output,noflags,nofchannels),1)); %which channels were set to zero
-                selected_channels = find(0~=mean(reshape(output,noflags,nofchannels),1)); %which channels were set to zero
                 chnl_lst = params.chnl_lst;
-                rem_chnl_cnt = 1;
-                while(length(selected_channels)~=params.lassochnum)
+                rem_chnl_cnt = 0;
+                flag = 1;
+                selected_channels = [];
+                while(length(selected_channels)~=params.lassochnum || flag == 1)
+                    [output,~] = group_lasso(Rxx, Rxy, lambda, p, 1.0, 1.0); % AMN
+                    flag = 0;
+                    decoder.ignoredchannels = find(0==mean(reshape(output,noflags,nofchannels),1)); %which channels were set to zero
+                    selected_channels = find(0~=mean(reshape(output,noflags,nofchannels),1)); %which channels were set to zero
+            
+        
                     if(length(selected_channels)>params.lassochnum)
                         lamb_gr_2 = lambda;
                         if(~lamb_ls_2)
-                            lambda = lambda*10;
+                            lambda = lambda*2;
                         else
                             lambda = lamb_gr_2 + ((lamb_ls_2 - lamb_gr_2)/2);
                         end
@@ -71,6 +74,7 @@ function aad_do_lasso(params)
                     
                     [output,~] = group_lasso(Rxx, Rxy, lambda, p, 1.0, 1.0); % AMN
                     selected_channels = find(0~=mean(reshape(output,noflags,nofchannels),1)); %which channels were set to zero
+                    fprintf('\nLambda = %3.2f', lambda);
                     
                     if(length(selected_channels)==params.lassochnum)
                         ch_selected = chnl_lst(selected_channels,:);
@@ -92,13 +96,13 @@ function aad_do_lasso(params)
                                     
                                     selected_channels(selected_channels == row_ids) = [];
                                     chnl_lst(row_ids,:) = [];
-                                    lambda = params.lassofactor;
-                                    lamb_gr_2 = 0;
-                                    lamb_ls_2 = 0;
                                     nofchannels = size(chnl_lst,1);
                                     p = length(Rxy)/nofchannels *ones(nofchannels,1); %each of the channels represents a group with length equal to number of delays
                                     
-                                    rem_chnl_cnt = rem_chnl_cnt + 1;                            
+                                    rem_chnl_cnt = rem_chnl_cnt + 1;
+                                    lamb_gr_2 = 0;
+                                    lamb_ls_2 = 0;
+                                    lambda = params.lassofactor;
                                 end
 %                             end
                         end
