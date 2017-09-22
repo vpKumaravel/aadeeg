@@ -37,8 +37,9 @@ function aad_cnstrct_covar_for_lasso(params)
         
         [y_att, y_unatt] = att_unatt(yleft, yright, trial.attended_ear);
         
-        selected_channels = do_lasso(params, X, y_att);
+        [selected_channels, lambda] = do_lasso(params, X, y_att);
         
+        save([params.resultsdir filesep cell2mat(subject) sprintf('_wide_%d_selected_channels.mat',params.lassochnum)],'selected_channels','lambda');
         % Calculate 5 covar matrices (with lags).  x refers to eeg, y to audio,
 %         [covar.Rxx,Ryy_left,Rxy_left,Ryy_right,Rxy_right] = covar_matrices(sub_eeg(:,params.channels),audio,trial.FileHeader.SampleRate,params.start,params.end,params.audioshifts,params.singleshift,params.decodershift);
 %         [covar.Ryy_att,covar.Ryy_unatt] = deal(Ryy_left,Ryy_right);
