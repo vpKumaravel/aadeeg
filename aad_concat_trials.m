@@ -1,10 +1,10 @@
 function aad_concat_trials(trialdir, params)
 
-        temp = dir([trialdir filesep 'concat_trials' '.mat']);
-        if length(temp) == 1 %if preprocessed trials already exist, don't run this file (to save time)
-            return; %bypass this by running aad_clear_all
-        end
-        %% List all the preprocessed trials (same as in avg covar matrices)
+%         temp = dir([trialdir filesep 'concat_trials' '.mat']);
+%         if length(temp) == 1 %if preprocessed trials already exist, don't run this file (to save time)
+%             return; %bypass this by running aad_clear_all
+%         end
+%         %% List all the preprocessed trials (same as in avg covar matrices)
         trialfiles = dir(fullfile(trialdir, ['preprocessed trial '  params.envelopemethod params.subbandtag ' 0*.mat']));
         trialnames = sort({trialfiles(:).name});
         nOfTrials = length(trialnames);
