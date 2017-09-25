@@ -1,12 +1,10 @@
 function aad_cnstrct_covar_for_lasso(params)
-%         all_sub_covar = struct;
-%         all_sub_covar.Rxx = [];
-%         all_sub_covar.Ryy_att = [];
-%         all_sub_covar.Ryy_unatt = [];
-%         all_sub_covar.Rxy_att = [];
-%         all_sub_covar.Rxy_unatt = [];
-%         all_sub_covar.nOfSubs = 0;
+
+    parpool(4);
+    
+    k = 1;
     for subject = params.subjects
+        params_all(k) = {params};
         %% list all preprocessed/split trials for a subject
         trialdir = fullfile(params.basedirectory , subject{1});
         
@@ -18,12 +16,27 @@ function aad_cnstrct_covar_for_lasso(params)
             load(fullfile(trialdir,['concat_trials' '.mat']));
         end
         
+        sub_eeg_all(k) = {sub_eeg};
+        sub_env_all(k) = {sub_envelope};
+        trial_all(k) = {trial};
+        sub_names(k) = {subject{1}};
+        k = k+1;
+    end
+
+    no_of_subs = k-1;
+    
+    parfor k = 1:no_of_subs
+        params = params_all{k};
+        trial = trial_all{k};
+        sub_eeg = sub_eeg_all{k};
+        sub_envelope = sub_env_all{k};
+        
         params.channels = 1:length(trial.chnl_lst);
-        covar = trial;
-        covar.RawData.EegData = []; covar.Envelope.AudioData = [];
-        covar.params = params;
-        covar.subject = subject{1};
-        covar.condition = trial.condition;
+%         covar = trial;
+%         covar.RawData.EegData = []; covar.Envelope.AudioData = [];
+%         covar.params = params;
+%         covar.subject = subject{1};
+%         covar.condition = trial.condition;
         
         left = squeeze(sub_envelope(:,1,:))*trial.Envelope.subband_weights(:);
         right = squeeze(sub_envelope(:,2,:))*trial.Envelope.subband_weights(:);
@@ -37,36 +50,19 @@ function aad_cnstrct_covar_for_lasso(params)
         
         [y_att, y_unatt] = att_unatt(yleft, yright, trial.attended_ear);
         
-        [selected_channels, lambda] = do_lasso(params, X, y_att);
+        do_lasso(params, X, y_att, sub_names{k});
         
-        save([params.resultsdir filesep cell2mat(subject) sprintf('_wide_%d_selected_channels.mat',params.lassochnum)],'selected_channels','lambda');
-        % Calculate 5 covar matrices (with lags).  x refers to eeg, y to audio,
-%         [covar.Rxx,Ryy_left,Rxy_left,Ryy_right,Rxy_right] = covar_matrices(sub_eeg(:,params.channels),audio,trial.FileHeader.SampleRate,params.start,params.end,params.audioshifts,params.singleshift,params.decodershift);
-%         [covar.Ryy_att,covar.Ryy_unatt] = deal(Ryy_left,Ryy_right);
-%         [covar.Rxy_att,covar.Rxy_unatt] = deal(Rxy_left,Rxy_right);
-%         
-%         save([params.covardir filesep subject{1} '_covar.mat'],'covar');
-%         
-%         if(all_sub_covar.nOfSubs == 0)
-%             all_sub_covar.Rxx = [all_sub_covar.Rxx, covar.Rxx];
-%             all_sub_covar.Ryy_att = [all_sub_covar.Ryy_att, covar.Ryy_att];
-%             all_sub_covar.Ryy_unatt = [all_sub_covar.Ryy_unatt, covar.Ryy_unatt];
-%             all_sub_covar.Rxy_att = [all_sub_covar.Rxy_att, covar.Rxy_att];
-%             all_sub_covar.Rxy_unatt = [all_sub_covar.Rxy_unatt, covar.Rxy_unatt];
-%             all_sub_covar.nOfSubs = all_sub_covar.nOfSubs + 1;
-%         else
-%             all_sub_covar.Rxx = (all_sub_covar.Rxx + covar.Rxx)./2;
-%             all_sub_covar.Ryy_att = (all_sub_covar.Ryy_att+ covar.Ryy_att)./2;
-%             all_sub_covar.Ryy_unatt = (all_sub_covar.Ryy_unatt + covar.Ryy_unatt)./2;
-%             all_sub_covar.Rxy_att = (all_sub_covar.Rxy_att + covar.Rxy_att)./2;
-%             all_sub_covar.Rxy_unatt = (all_sub_covar.Rxy_unatt + covar.Rxy_unatt)./2;
-%             all_sub_covar.nOfSubs = all_sub_covar.nOfSubs + 1;
-%         end
-% 
-% 
+%         lasso_ch_selection(k,1) = {sub_names{k}};
+%         lasso_ch_selection(k,2) = {selected_channels};
+%         lasso_ch_selection(k,3) = {lambda};
+    end
+        
+    for k = 1:no_of_subs
+        
     end
 %         save([params.covardir filesep 'allsub_covar.mat'],'all_sub_covar');
 end
+
 
 
 function [X, yleft, yright] = create_lagged_data(x, y, Fs, start, fin, audioshifts, singleshift, decodershift)
