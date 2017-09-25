@@ -89,16 +89,17 @@
 %% Subjects-wide channel/node selection
 % aad_clear_all('powerlaw subbands',aad_getDefaultParams,false);
 split_len = 60;
-p = aad_getDefaultParams('WESN_subjects_wide_select_nodes');
+p = aad_getDefaultParams('WESN_per_subject_select_nodes');
 p.rereference = 0;
 p.cluster = 1;
 p.clusterno = 64;
 p.minchexp = 1;
 p.triallasso = 0;
 p.decodermethod = 'osullivan';
-p.lassofactor = 1;
+p.lassofactor = 6.25;
 p.channels = 1:200;
 p.lassochnum = 2;
 p.lassochsel = 1;
 p.allsublasso = 1;
+p.end = 100;
 aad_toplevel(p);
