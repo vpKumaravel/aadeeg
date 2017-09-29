@@ -1,8 +1,20 @@
 function aad_cnstrct_covar_for_lasso(params)
 
-    parpool(4);
+    if(params.parpro == 1 && params.allsublasso==0)
+        poolobj = gcp('nocreate');
+        if(isempty(poolobj))
+           parpool(2);
+        end
+    end
     
     k = 1;
+    
+    if(params.allsublasso == 1)
+        allsublasso = 1;
+    else
+        allsublasso = 0;
+    end
+    
     for subject = params.subjects
         params_all(k) = {params};
         %% list all preprocessed/split trials for a subject
@@ -24,41 +36,73 @@ function aad_cnstrct_covar_for_lasso(params)
     end
 
     no_of_subs = k-1;
-    
-    parfor k = 1:no_of_subs
-        params = params_all{k};
-        trial = trial_all{k};
-        sub_eeg = sub_eeg_all{k};
-        sub_envelope = sub_env_all{k};
-        
-        params.channels = 1:length(trial.chnl_lst);
+    if(params.parpro == 1 && allsublasso == 0)
+        parfor k = 1:no_of_subs
+            params = params_all{k};
+            trialsub = trial_all{k};
+            sub_eeg = sub_eeg_all{k};
+            sub_envelope = sub_env_all{k};
+
+            params.channels = 1:length(trialsub.chnl_lst);
 %         covar = trial;
 %         covar.RawData.EegData = []; covar.Envelope.AudioData = [];
 %         covar.params = params;
 %         covar.subject = subject{1};
 %         covar.condition = trial.condition;
-        
-        left = squeeze(sub_envelope(:,1,:))*trial.Envelope.subband_weights(:);
-        right = squeeze(sub_envelope(:,2,:))*trial.Envelope.subband_weights(:);
-        if strcmpi(params.experimentName,'abs powerlaw experiment') 
-            left = sign(left).*abs(left).^params.power; 
-            right = sign(right).*abs(right).^params.power; 
+
+            left = squeeze(sub_envelope(:,1,:))*trialsub.Envelope.subband_weights(:);
+            right = squeeze(sub_envelope(:,2,:))*trialsub.Envelope.subband_weights(:);
+            if strcmpi(params.experimentName,'abs powerlaw experiment') 
+                left = sign(left).*abs(left).^params.power; 
+                right = sign(right).*abs(right).^params.power; 
+            end
+            audio = cat(2,left,right);
+
+            [X, yleft, yright] = create_lagged_data(sub_eeg(:,params.channels),audio,trialsub.FileHeader.SampleRate,params.start,params.end,params.audioshifts,params.singleshift,params.decodershift);
+
+            [y_att, y_unatt] = att_unatt(yleft, yright, trialsub.attended_ear);
+            do_lasso(params, X, y_att, sub_names{k});
         end
-        audio = cat(2,left,right);
-        
-        [X, yleft, yright] = create_lagged_data(sub_eeg(:,params.channels),audio,trial.FileHeader.SampleRate,params.start,params.end,params.audioshifts,params.singleshift,params.decodershift);
-        
-        [y_att, y_unatt] = att_unatt(yleft, yright, trial.attended_ear);
-        
-        do_lasso(params, X, y_att, sub_names{k});
-        
-%         lasso_ch_selection(k,1) = {sub_names{k}};
-%         lasso_ch_selection(k,2) = {selected_channels};
-%         lasso_ch_selection(k,3) = {lambda};
-    end
-        
-    for k = 1:no_of_subs
-        
+    else
+        for k = 1:no_of_subs
+            params = params_all{k};
+            trialsub = trial_all{k};
+            sub_eeg = sub_eeg_all{k};
+            sub_envelope = sub_env_all{k};
+
+            params.channels = 1:length(trialsub.chnl_lst);
+    %         covar = trial;
+    %         covar.RawData.EegData = []; covar.Envelope.AudioData = [];
+    %         covar.params = params;
+    %         covar.subject = subject{1};
+    %         covar.condition = trial.condition;
+
+            left = squeeze(sub_envelope(:,1,:))*trialsub.Envelope.subband_weights(:);
+            right = squeeze(sub_envelope(:,2,:))*trialsub.Envelope.subband_weights(:);
+            if strcmpi(params.experimentName,'abs powerlaw experiment') 
+                left = sign(left).*abs(left).^params.power; 
+                right = sign(right).*abs(right).^params.power; 
+            end
+            audio = cat(2,left,right);
+
+            [X, yleft, yright] = create_lagged_data(sub_eeg(:,params.channels),audio,trialsub.FileHeader.SampleRate,params.start,params.end,params.audioshifts,params.singleshift,params.decodershift);
+
+            [y_att, y_unatt] = att_unatt(yleft, yright, trialsub.attended_ear);
+
+            if(~allsublasso)
+                do_lasso(params, X, y_att, sub_names{k});
+            else
+                if(k == 1)
+                    Rxx = zeros(size(X,2));
+                    Rxy = zeros(size(X,2),1);
+                end
+                Rxx = Rxx + X'*X;
+                Rxy = Rxy + X'*y_att;
+            end
+        end
+        if(allsublasso)
+            do_lasso(params, Rxx, Rxy, 'all_subs');
+        end
     end
 %         save([params.covardir filesep 'allsub_covar.mat'],'all_sub_covar');
 end
